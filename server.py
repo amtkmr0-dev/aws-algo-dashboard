@@ -4,7 +4,7 @@ import requests
 import time
 import threading
 import concurrent.futures
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
@@ -116,7 +116,7 @@ def data_fetcher_loop():
                     
             if results:
                 latest_data = {
-                    "timestamp": datetime.now().strftime('%H:%M:%S'),
+                    "timestamp": datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime('%H:%M:%S'),
                     "indices": results
                 }
                 print(f"[{latest_data['timestamp']}] Broadcasted new tick.")
