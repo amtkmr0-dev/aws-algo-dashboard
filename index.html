@@ -281,15 +281,36 @@
                 const data = JSON.parse(event.data);
                 timeEl.innerText = `Live | ${data.timestamp}`;
 
-                let globalMinIv = Infinity;
+                let bestTrades = [];
                 data.indices.forEach(idx => {
                     idx.rows.forEach(row => {
-                        if (row.ce_impv > 0 && row.ce_impv < globalMinIv) globalMinIv = row.ce_impv;
-                        if (row.pe_impv > 0 && row.pe_impv < globalMinIv) globalMinIv = row.pe_impv;
+                        if (row.ce_impv > 0) {
+                            let margin = row.ce_ltp * idx.lot;
+                            bestTrades.push({ stock: idx.name, type: 'CE', strike: row.ce_strike, impv: row.ce_impv, ltp: row.ce_ltp, lot: idx.lot, margin: margin });
+                        }
+                        if (row.pe_impv > 0) {
+                            let margin = row.pe_ltp * idx.lot;
+                            bestTrades.push({ stock: idx.name, type: 'PE', strike: row.pe_strike, impv: row.pe_impv, ltp: row.pe_ltp, lot: idx.lot, margin: margin });
+                        }
                     });
                 });
 
+                bestTrades.sort((a, b) => a.impv - b.impv);
+                let top3 = bestTrades.slice(0, 3);
+                let globalMinIv = top3.length > 0 ? top3[0].impv : Infinity;
+
                 let html = '';
+                if (top3.length > 0) {
+                    html += `<div style="background:linear-gradient(45deg, #d97706, #fbbf24); color:#111827; padding:15px; border-radius:10px; margin-bottom:20px; text-align:center; box-shadow:0 0 15px #fbbf24; animation: pulse-gold 1.5s infinite;">`;
+                    html += `<h3 style="margin:0 0 10px 0; font-weight:900;">🏆 AI'S TOP 3 CHEAPEST PREMIUMS TODAY 🏆</h3>`;
+                    html += `<div style="display:flex; justify-content:space-around; font-weight:bold; font-size: 16px;">`;
+                    top3.forEach((t, i) => {
+                        let rank = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉";
+                        html += `<div>${rank} ${t.stock} ${t.strike} ${t.type} @ <span style="font-size: 20px;">${t.impv}% IV</span><br><span style="font-size:13px; font-weight:600; color: #4b5563;">Capital Req: ₹${Math.round(t.margin).toLocaleString('en-IN')} (Lot: ${t.lot} × ₹${t.ltp})</span></div>`;
+                    });
+                    html += `</div></div>`;
+                }
+
                 let shouldBeep = false;
                 data.indices.forEach(idx => {
                     html += `
