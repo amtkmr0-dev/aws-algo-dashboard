@@ -144,6 +144,28 @@
             color: #ef4444;
         }
 
+        .highlight-tv {
+            background-color: rgba(239, 68, 68, 0.15) !important;
+            color: #fca5a5 !important;
+            animation: pulse-border 1.5s infinite;
+            border: 2px solid #ef4444 !important;
+            border-radius: 6px;
+        }
+
+        @keyframes pulse-border {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+
         #summary-banner {
             display: flex;
             justify-content: space-around;
@@ -227,10 +249,27 @@
     </div>
 
     <script>
+        const playBeep = () => {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') return;
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                setTimeout(() => oscillator.stop(), 200);
+            } catch (e) { }
+        };
+
         const connectWebSocket = () => {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws_nifty`;
             const ws = new WebSocket(wsUrl);
+            let alertedSet = new Set();
 
             const container = document.getElementById('tables-container');
             const timeEl = document.getElementById('time');
@@ -255,6 +294,7 @@
                 }
 
                 let html = '';
+                let shouldBeep = false;
                 data.indices.forEach(idx => {
                     html += `
                         <table>
@@ -274,11 +314,25 @@
                             ? `<span class="buy-ce">BUY CE</span>`
                             : row.bias === 'BUY PE' ? `<span class="buy-pe">BUY PE</span>` : '-';
 
+                        const uniqueKeyCE = idx.name + '_' + row.ce_strike + '_CE';
+                        const uniqueKeyPE = idx.name + '_' + row.pe_strike + '_PE';
+
+                        if (row.ce_tv <= 0) {
+                            if (!alertedSet.has(uniqueKeyCE)) { alertedSet.add(uniqueKeyCE); shouldBeep = true; }
+                        } else { alertedSet.delete(uniqueKeyCE); }
+
+                        if (row.pe_tv <= 0) {
+                            if (!alertedSet.has(uniqueKeyPE)) { alertedSet.add(uniqueKeyPE); shouldBeep = true; }
+                        } else { alertedSet.delete(uniqueKeyPE); }
+
+                        let ceTvHtml = row.ce_tv <= 0 ? `<td style="font-weight:bold;" class="highlight-tv">${row.ce_tv} 🔔买</td>` : `<td style="font-weight:bold;">${row.ce_tv}</td>`;
+                        let peTvHtml = row.pe_tv <= 0 ? `<td style="font-weight:bold;" class="highlight-tv">${row.pe_tv} 🔔买</td>` : `<td style="font-weight:bold;">${row.pe_tv}</td>`;
+
                         html += `
                             <tr>
                                 <td style="font-weight: bold; color: #cbd5e1;">${row.pair}</td>
-                                <td class="val-strike">${row.ce_strike}</td><td class="val-call">${row.ce_ltp}</td><td>${row.ce_iv}</td><td style="font-weight:bold;">${row.ce_tv}</td>
-                                <td class="val-strike">${row.pe_strike}</td><td class="val-put">${row.pe_ltp}</td><td>${row.pe_iv}</td><td style="font-weight:bold;">${row.pe_tv}</td>
+                                <td class="val-strike">${row.ce_strike}</td><td class="val-call">${row.ce_ltp}</td><td>${row.ce_iv}</td>${ceTvHtml}
+                                <td class="val-strike">${row.pe_strike}</td><td class="val-put">${row.pe_ltp}</td><td>${row.pe_iv}</td>${peTvHtml}
                                 <td>${row.diff}</td>
                                 <td>${biasHtml}</td>
                             </tr>
@@ -286,6 +340,8 @@
                     });
                     html += `</table>`;
                 });
+
+                if (shouldBeep) playBeep();
 
                 container.innerHTML = html;
             };
