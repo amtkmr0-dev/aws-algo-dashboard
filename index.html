@@ -166,6 +166,31 @@
             }
         }
 
+        .best-trade {
+            background: linear-gradient(45deg, #d97706, #fbbf24) !important;
+            color: #111827 !important;
+            font-weight: 900 !important;
+            border-radius: 8px;
+            border: 2px solid #fef08a !important;
+            animation: pulse-gold 1.5s infinite;
+            text-shadow: none;
+            box-shadow: 0 0 10px #fbbf24;
+        }
+
+        @keyframes pulse-gold {
+            0% {
+                box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(251, 191, 36, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+            }
+        }
+
         #error-banner {
             display: none;
             background: #7f1d1d;
@@ -255,6 +280,14 @@
                 const data = JSON.parse(event.data);
                 timeEl.innerText = `Live | ${data.timestamp}`;
 
+                let globalMinIv = Infinity;
+                data.indices.forEach(idx => {
+                    idx.rows.forEach(row => {
+                        if (row.ce_impv > 0 && row.ce_impv < globalMinIv) globalMinIv = row.ce_impv;
+                        if (row.pe_impv > 0 && row.pe_impv < globalMinIv) globalMinIv = row.pe_impv;
+                    });
+                });
+
                 let html = '';
                 let shouldBeep = false;
                 data.indices.forEach(idx => {
@@ -290,11 +323,22 @@
                         let ceTvHtml = row.ce_tv <= 0 ? `<td style="font-weight:bold;" class="highlight-tv">${row.ce_tv} 🔔买</td>` : `<td style="font-weight:bold;">${row.ce_tv}</td>`;
                         let peTvHtml = row.pe_tv <= 0 ? `<td style="font-weight:bold;" class="highlight-tv">${row.pe_tv} 🔔买</td>` : `<td style="font-weight:bold;">${row.pe_tv}</td>`;
 
+                        let isBestCe = (row.ce_impv === globalMinIv && globalMinIv !== Infinity);
+                        let isBestPe = (row.pe_impv === globalMinIv && globalMinIv !== Infinity);
+
+                        let ceImpvHtml = isBestCe
+                            ? `<td class="best-trade">${row.ce_impv}% 🏆</td>`
+                            : `<td style="color:#a855f7; font-weight:bold;">${row.ce_impv}%</td>`;
+
+                        let peImpvHtml = isBestPe
+                            ? `<td class="best-trade">${row.pe_impv}% 🏆</td>`
+                            : `<td style="color:#a855f7; font-weight:bold;">${row.pe_impv}%</td>`;
+
                         html += `
                             <tr>
                                 <td style="font-weight: bold; color: #cbd5e1;">${row.pair}</td>
-                                <td class="val-strike">${row.ce_strike}</td><td class="val-call">${row.ce_ltp}</td><td>${row.ce_iv}</td>${ceTvHtml}<td style="color:#a855f7; font-weight:bold;">${row.ce_impv}%</td>
-                                <td class="val-strike">${row.pe_strike}</td><td class="val-put">${row.pe_ltp}</td><td>${row.pe_iv}</td>${peTvHtml}<td style="color:#a855f7; font-weight:bold;">${row.pe_impv}%</td>
+                                <td class="val-strike">${row.ce_strike}</td><td class="val-call">${row.ce_ltp}</td><td>${row.ce_iv}</td>${ceTvHtml}${ceImpvHtml}
+                                <td class="val-strike">${row.pe_strike}</td><td class="val-put">${row.pe_ltp}</td><td>${row.pe_iv}</td>${peTvHtml}${peImpvHtml}
                                 <td>${row.diff}</td>
                                 <td>${biasHtml}</td>
                             </tr>
