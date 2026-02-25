@@ -11,7 +11,15 @@ import nifty_weights
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
+
+import json
+try:
+    with open("lot_sizes.json", "r") as f:
+        LOT_SIZES = json.load(f)
+except:
+    LOT_SIZES = {}
 
 load_dotenv("keys.env", override=True)
 ACCESS_TOKEN = os.getenv("UPSTOX_ACCESS_TOKEN")
@@ -151,14 +159,16 @@ def process_index(name, key, expiry):
         diff = round(ce_tv - pe_tv, 2)
         bias = "BUY PE" if diff > 0 else "BUY CE" if diff < 0 else ""
         
+        lot = LOT_SIZES.get(name, 1)
+
         rows.append({
             "pair": f"{ce_strike} / {pe_strike}",
             "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "ce_impv": ce_impv,
             "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "pe_impv": pe_impv,
-            "diff": diff, "bias": bias
+            "diff": diff, "bias": bias, "lot": lot
         })
         
-    return {"name": name, "spot": spot, "expiry": expiry, "rows": rows}
+    return {"name": name, "spot": spot, "expiry": expiry, "lot": LOT_SIZES.get(name, 1), "rows": rows}
 
 def data_fetcher_loop():
     global latest_data
@@ -357,12 +367,12 @@ def mega_quote_loop():
                                 "pair": f"{ce_strike} / {pe_strike}",
                                 "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "ce_impv": ce_impv,
                                 "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "pe_impv": pe_impv,
-                                "diff": diff, "bias": bias
+                                "diff": diff, "bias": bias, "lot": LOT_SIZES.get(stock, 1)
                             })
                             
                         if rows:
                             w = nifty_weights.get_weight(stock)
-                            results.append({"name": stock, "weight": w, "status": stock_status, "spot": spot, "expiry": EXPIRY_STOCKS, "rows": rows})
+                            results.append({"name": stock, "weight": w, "status": stock_status, "spot": spot, "expiry": EXPIRY_STOCKS, "lot": LOT_SIZES.get(stock, 1), "rows": rows})
                     
                     summary = {"pos_count": 0, "pos_weight": 0.0, "neg_count": 0, "neg_weight": 0.0, "neu_count": 0, "neu_weight": 0.0}
                     for r in results:
