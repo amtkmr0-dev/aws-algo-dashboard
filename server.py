@@ -6,6 +6,7 @@ import time
 import threading
 import concurrent.futures
 from datetime import datetime, timezone, timedelta
+import nifty_weights
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
@@ -262,6 +263,7 @@ def mega_quote_loop():
                         atm = round(round(spot / interval) * interval, 2)
                         
                         rows = []
+                        stock_status = "NEUTRAL"
                         for n in range(1, 7):
                             ce_strike = atm - n * interval
                             pe_strike = atm + n * interval
@@ -283,6 +285,14 @@ def mega_quote_loop():
                             diff = round(ce_tv - pe_tv, 2)
                             bias = "BUY PE" if diff > 0 else "BUY CE" if diff < 0 else ""
                             
+                            if n == 2:
+                                if diff > 0:
+                                    stock_status = "NEGATIVE"
+                                elif diff < 0:
+                                    stock_status = "POSITIVE"
+                                else:
+                                    stock_status = "NEUTRAL"
+                            
                             rows.append({
                                 "pair": f"{ce_strike} / {pe_strike}",
                                 "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv,
@@ -291,10 +301,27 @@ def mega_quote_loop():
                             })
                             
                         if rows:
-                            results.append({"name": stock, "spot": spot, "expiry": EXPIRY_STOCKS, "rows": rows})
+                            w = nifty_weights.get_weight(stock)
+                            results.append({"name": stock, "weight": w, "status": stock_status, "spot": spot, "expiry": EXPIRY_STOCKS, "rows": rows})
+                    
+                    summary = {"pos_count": 0, "pos_weight": 0.0, "neg_count": 0, "neg_weight": 0.0, "neu_count": 0, "neu_weight": 0.0}
+                    for r in results:
+                        st = r["status"]
+                        w = r["weight"]
+                        if st == "POSITIVE":
+                            summary["pos_count"] += 1; summary["pos_weight"] += w
+                        elif st == "NEGATIVE":
+                            summary["neg_count"] += 1; summary["neg_weight"] += w
+                        else:
+                            summary["neu_count"] += 1; summary["neu_weight"] += w
+                            
+                    summary["pos_weight"] = round(summary["pos_weight"], 2)
+                    summary["neg_weight"] = round(summary["neg_weight"], 2)
+                    summary["neu_weight"] = round(summary["neu_weight"], 2)
                     
                     latest_nifty_data = {
                         "timestamp": datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime('%H:%M:%S'),
+                        "summary": summary,
                         "indices": results
                     }
                     

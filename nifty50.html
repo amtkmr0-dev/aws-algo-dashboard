@@ -144,6 +144,46 @@
             color: #ef4444;
         }
 
+        #summary-banner {
+            display: flex;
+            justify-content: space-around;
+            background: #111827;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #1f2937;
+        }
+
+        .stat-box {
+            text-align: center;
+        }
+
+        .stat-title {
+            font-size: 12px;
+            color: #9ca3af;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .pos-color {
+            color: #10b981;
+        }
+
+        .neg-color {
+            color: #ef4444;
+        }
+
+        .neu-color {
+            color: #94a3b8;
+        }
+
         #error-banner {
             display: none;
             background: #7f1d1d;
@@ -164,6 +204,21 @@
             <div class="timestamp">
                 <span class="live-indicator" id="pulse-dot"></span>
                 <span id="time">Connecting to Server...</span>
+            </div>
+        </div>
+
+        <div id="summary-banner">
+            <div class="stat-box">
+                <div class="stat-title">POSITIVE STOCKS</div>
+                <div class="stat-value pos-color" id="pos-stat">0 | 0.0%</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-title">NEGATIVE STOCKS</div>
+                <div class="stat-value neg-color" id="neg-stat">0 | 0.0%</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-title">NEUTRAL STOCKS</div>
+                <div class="stat-value neu-color" id="neu-stat">0 | 0.0%</div>
             </div>
         </div>
 
@@ -193,12 +248,18 @@
                 const data = JSON.parse(event.data);
                 timeEl.innerText = `Live | ${data.timestamp}`;
 
+                if (data.summary) {
+                    document.getElementById('pos-stat').innerText = `${data.summary.pos_count} | ${data.summary.pos_weight}%`;
+                    document.getElementById('neg-stat').innerText = `${data.summary.neg_count} | ${data.summary.neg_weight}%`;
+                    document.getElementById('neu-stat').innerText = `${data.summary.neu_count} | ${data.summary.neu_weight}%`;
+                }
+
                 let html = '';
                 data.indices.forEach(idx => {
                     html += `
                         <table>
                             <tr>
-                                <td colspan="11" class="table-title">${idx.name} (Spot: ${idx.spot} | Exp: ${idx.expiry})</td>
+                                <td colspan="11" class="table-title">${idx.name} (Spot: ${idx.spot} | Exp: ${idx.expiry} | Weight: ${idx.weight}%)</td>
                             </tr>
                             <tr>
                                 <th>Strikes</th>
