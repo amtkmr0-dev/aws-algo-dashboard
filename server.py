@@ -5,6 +5,7 @@ import json
 import time
 import threading
 import concurrent.futures
+import math
 from datetime import datetime, timezone, timedelta
 import nifty_weights
 
@@ -32,6 +33,57 @@ connected_nifty_clients = set()
 
 with open("nifty50_keys.json", "r") as f:
     NIFTY_KEYS = json.load(f)
+
+# --- 0. BLACK SCHOLES LOGIC ---
+def norm_cdf(x):
+    return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
+
+def norm_pdf(x):
+    return math.exp(-0.5 * x * x) / math.sqrt(2.0 * math.pi)
+
+def bs_call_price(S, K, T, r, sigma):
+    try:
+        d1 = (math.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * math.sqrt(T))
+        d2 = d1 - sigma * math.sqrt(T)
+        return S * norm_cdf(d1) - K * math.exp(-r * T) * norm_cdf(d2)
+    except: return 0.0
+
+def bs_put_price(S, K, T, r, sigma):
+    try:
+        d1 = (math.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * math.sqrt(T))
+        d2 = d1 - sigma * math.sqrt(T)
+        return K * math.exp(-r * T) * norm_cdf(-d2) - S * norm_cdf(-d1)
+    except: return 0.0
+
+def bs_vega(S, K, T, r, sigma):
+    try:
+        d1 = (math.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * math.sqrt(T))
+        return S * norm_pdf(d1) * math.sqrt(T)
+    except: return 0.0
+
+def calculate_iv(market_price, S, K, T_days, r, opt_type):
+    if T_days <= 0 or market_price <= 0 or S <= 0 or K <= 0:
+        return 0.0
+    T = T_days / 365.0
+    sigma = 0.5 # 50% initial guess
+    for _ in range(50):
+        price = bs_call_price(S,K,T,r,sigma) if opt_type == 'CE' else bs_put_price(S,K,T,r,sigma)
+        diff = market_price - price
+        if abs(diff) < 0.001: return round(sigma * 100, 2)
+        vega = bs_vega(S,K,T,r,sigma)
+        if vega == 0.0: break
+        sigma += diff / vega
+        if sigma <= 0.0: sigma = 0.01
+    return round(sigma * 100, 2)
+
+def get_days_to_expiry(expiry_str):
+    try:
+        exp_date = datetime.strptime(expiry_str, "%Y-%m-%d")
+        now = datetime.now()
+        days = (exp_date - now).days
+        return max(0.001, days)
+    except: return 1.0
+
 
 # --- 1. INDEX LOGIC ---
 def get_option_chain(instrument_key, expiry):
@@ -75,6 +127,7 @@ def process_index(name, key, expiry):
     
     interval = get_interval(chain)
     atm = round(round(spot / interval) * interval, 2)
+    days_to_expiry = get_days_to_expiry(expiry)
     
     rows = []
     for n in range(1, 7):
@@ -86,19 +139,22 @@ def process_index(name, key, expiry):
         
         if ce_ltp == 0 or pe_ltp == 0: break
             
-        ce_iv = max(0, spot - ce_strike)
+        ce_iv = max(0, spot - ce_strike)  # Intrinsic Value
         pe_iv = max(0, pe_strike - spot)
         
         ce_tv = round(ce_ltp - ce_iv, 2)
         pe_tv = round(pe_ltp - pe_iv, 2)
+        
+        ce_impv = calculate_iv(ce_ltp, spot, ce_strike, days_to_expiry, 0.1, 'CE')
+        pe_impv = calculate_iv(pe_ltp, spot, pe_strike, days_to_expiry, 0.1, 'PE')
         
         diff = round(ce_tv - pe_tv, 2)
         bias = "BUY PE" if diff > 0 else "BUY CE" if diff < 0 else ""
         
         rows.append({
             "pair": f"{ce_strike} / {pe_strike}",
-            "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv,
-            "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv,
+            "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "ce_impv": ce_impv,
+            "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "pe_impv": pe_impv,
             "diff": diff, "bias": bias
         })
         
@@ -261,6 +317,7 @@ def mega_quote_loop():
                         
                         interval = meta["interval"]
                         atm = round(round(spot / interval) * interval, 2)
+                        days_to_expiry = get_days_to_expiry(EXPIRY_STOCKS)
                         
                         rows = []
                         stock_status = "NEUTRAL"
@@ -276,11 +333,14 @@ def mega_quote_loop():
                             
                             if ce_ltp == 0 or pe_ltp == 0: break
                                 
-                            ce_iv = max(0, spot - ce_strike)
-                            pe_iv = max(0, pe_strike - spot)
+                            ce_iv = max(0, spot - ce_strike) # Intrinsic
+                            pe_iv = max(0, pe_strike - spot) # Intrinsic
                             
                             ce_tv = round(ce_ltp - ce_iv, 2)
                             pe_tv = round(pe_ltp - pe_iv, 2)
+                            
+                            ce_impv = calculate_iv(ce_ltp, spot, ce_strike, days_to_expiry, 0.1, 'CE')
+                            pe_impv = calculate_iv(pe_ltp, spot, pe_strike, days_to_expiry, 0.1, 'PE')
                             
                             diff = round(ce_tv - pe_tv, 2)
                             bias = "BUY PE" if diff > 0 else "BUY CE" if diff < 0 else ""
@@ -295,8 +355,8 @@ def mega_quote_loop():
                             
                             rows.append({
                                 "pair": f"{ce_strike} / {pe_strike}",
-                                "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv,
-                                "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv,
+                                "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "ce_impv": ce_impv,
+                                "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "pe_impv": pe_impv,
                                 "diff": diff, "bias": bias
                             })
                             
