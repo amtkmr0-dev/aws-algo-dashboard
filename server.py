@@ -78,10 +78,10 @@ def calculate_iv(market_price, S, K, T_days, r, opt_type):
 
 def get_days_to_expiry(expiry_str):
     try:
-        exp_date = datetime.strptime(expiry_str, "%Y-%m-%d")
+        exp_date = datetime.strptime(expiry_str + " 15:30:00", "%Y-%m-%d %H:%M:%S")
         now = datetime.now()
-        days = (exp_date - now).days
-        return max(0.001, days)
+        diff = (exp_date - now).total_seconds() / 86400.0
+        return max(0.001, diff)
     except: return 1.0
 
 
