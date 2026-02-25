@@ -319,6 +319,7 @@ def mega_quote_loop():
                     summary["neg_weight"] = round(summary["neg_weight"], 2)
                     summary["neu_weight"] = round(summary["neu_weight"], 2)
                     
+                    results.sort(key=lambda x: x["weight"], reverse=True)
                     latest_nifty_data = {
                         "timestamp": datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime('%H:%M:%S'),
                         "summary": summary,
