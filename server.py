@@ -156,9 +156,9 @@ def process_index(name, key, expiry):
         ce_impv = calculate_iv(ce_ltp, spot, ce_strike, days_to_expiry, 0.1, 'CE')
         pe_impv = calculate_iv(pe_ltp, spot, pe_strike, days_to_expiry, 0.1, 'PE')
         
-        # Calculate Theoretical Fair Value using baseline 14% volatility
-        ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry, 0.1, 0.14), 2)
-        pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry, 0.1, 0.14), 2)
+        # Calculate Theoretical Fair Value using baseline 14% volatility (T must be in years)
+        ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
+        pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
         
         diff = round(ce_tv - pe_tv, 2)
         bias = "BUY PE" if diff > 0 else "BUY CE" if diff < 0 else ""
@@ -356,8 +356,8 @@ def mega_quote_loop():
                             ce_impv = calculate_iv(ce_ltp, spot, ce_strike, days_to_expiry, 0.1, 'CE')
                             pe_impv = calculate_iv(pe_ltp, spot, pe_strike, days_to_expiry, 0.1, 'PE')
                             
-                            ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry, 0.1, 0.16), 2)
-                            pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry, 0.1, 0.16), 2)
+                            ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.16), 2)
+                            pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.16), 2)
 
                             diff = round(ce_tv - pe_tv, 2)
                             bias = "BUY PE" if diff > 0 else "BUY CE" if diff < 0 else ""
