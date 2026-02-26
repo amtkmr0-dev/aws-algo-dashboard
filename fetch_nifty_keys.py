@@ -35,7 +35,7 @@ keys_map = {}
 with gzip.open("../banknifty_updater/complete.csv.gz", "rt", encoding="utf-8") as f:
     reader = csv.reader(f)
     for row in reader:
-        if len(row) > 3 and "EQ" in row[0]:
+        if len(row) > 3 and "NSE_EQ" in row[0]:
             sym = row[2]
             # upstox sometimes has extra spaces or suffix, but usually matches exactly
             if sym in symbols_set:
@@ -51,7 +51,7 @@ if missing:
     with gzip.open("../banknifty_updater/complete.csv.gz", "rt", encoding="utf-8") as f:
         reader = csv.reader(f)
         for row in reader:
-            if len(row) > 3 and "EQ" in row[0]:
+            if len(row) > 3 and "NSE_EQ" in row[0]:
                 for m in list(missing):
                     if m in row[2]:
                         keys_map[m] = row[0]
