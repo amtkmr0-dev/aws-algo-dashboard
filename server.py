@@ -63,6 +63,30 @@ def bs_put_price(S, K, T, r, sigma):
         return K * math.exp(-r * T) * norm_cdf(-d2) - S * norm_cdf(-d1)
     except: return 0.0
 
+def mjd_call_price(S, K, T, r, sigma, lambda_j=1.0, mu_j=-0.05, sigma_j=0.15, N=15):
+    try:
+        price = 0.0
+        lam_prime = lambda_j * (1 + mu_j)
+        for k in range(N):
+            poisson_prob = math.exp(-lam_prime * T) * ((lam_prime * T)**k) / math.factorial(k)
+            r_k = r - lambda_j * mu_j + (k * math.log(1 + mu_j)) / T
+            sigma_k = math.sqrt(sigma**2 + (k * sigma_j**2) / T)
+            price += poisson_prob * bs_call_price(S, K, T, r_k, sigma_k)
+        return price
+    except: return 0.0
+
+def mjd_put_price(S, K, T, r, sigma, lambda_j=1.0, mu_j=-0.05, sigma_j=0.15, N=15):
+    try:
+        price = 0.0
+        lam_prime = lambda_j * (1 + mu_j)
+        for k in range(N):
+            poisson_prob = math.exp(-lam_prime * T) * ((lam_prime * T)**k) / math.factorial(k)
+            r_k = r - lambda_j * mu_j + (k * math.log(1 + mu_j)) / T
+            sigma_k = math.sqrt(sigma**2 + (k * sigma_j**2) / T)
+            price += poisson_prob * bs_put_price(S, K, T, r_k, sigma_k)
+        return price
+    except: return 0.0
+
 def bs_vega(S, K, T, r, sigma):
     try:
         d1 = (math.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * math.sqrt(T))
@@ -153,9 +177,9 @@ def process_index(name, key, expiry):
         ce_tv = round(ce_ltp - ce_iv, 2)
         pe_tv = round(pe_ltp - pe_iv, 2)
         
-        # Calculate Theoretical Fair Value using baseline 14% volatility (T must be in years)
-        ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
-        pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
+        # Calculate Theoretical Fair Value using Merton Jump-Diffusion Volatility Model
+        ce_fv = round(mjd_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.12), 2)
+        pe_fv = round(mjd_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.12), 2)
         
         diff = round(ce_tv - pe_tv, 2)
         fv_diff = round(ce_fv - pe_fv, 2)
@@ -357,8 +381,8 @@ def mega_quote_loop():
                             ce_tv = round(ce_ltp - ce_iv, 2)
                             pe_tv = round(pe_ltp - pe_iv, 2)
                             
-                            ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.16), 2)
-                            pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.16), 2)
+                            ce_fv = round(mjd_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.12), 2)
+                            pe_fv = round(mjd_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.12), 2)
 
                             diff = round(ce_tv - pe_tv, 2)
                             fv_diff = round(ce_fv - pe_fv, 2)
