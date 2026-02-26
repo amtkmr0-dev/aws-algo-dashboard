@@ -158,7 +158,14 @@ def process_index(name, key, expiry):
         pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
         
         diff = round(ce_tv - pe_tv, 2)
-        bias = "BUY PE" if diff > 0 else "BUY CE" if diff < 0 else ""
+        fv_diff = round(ce_fv - pe_fv, 2)
+        
+        tv_bias = "BUY PE" if diff > 0 else "BUY CE" if diff < 0 else ""
+        fv_bias = "BUY PE" if fv_diff > 0 else "BUY CE" if fv_diff < 0 else ""
+        
+        bias = tv_bias
+        if tv_bias != "" and tv_bias == fv_bias:
+             bias += " ⭐️"
         
         lot = LOT_SIZES.get(name, 1)
 
@@ -166,7 +173,7 @@ def process_index(name, key, expiry):
             "pair": f"{ce_strike} / {pe_strike}",
             "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv,
             "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv,
-            "diff": diff, "bias": bias, "lot": lot
+            "diff": diff, "fv_diff": fv_diff, "bias": bias, "lot": lot
         })
         
     return {"name": name, "spot": spot, "expiry": expiry, "lot": LOT_SIZES.get(name, 1), "rows": rows}
@@ -354,7 +361,14 @@ def mega_quote_loop():
                             pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.16), 2)
 
                             diff = round(ce_tv - pe_tv, 2)
-                            bias = "BUY PE" if diff > 0 else "BUY CE" if diff < 0 else ""
+                            fv_diff = round(ce_fv - pe_fv, 2)
+                            
+                            tv_bias = "BUY PE" if diff > 0 else "BUY CE" if diff < 0 else ""
+                            fv_bias = "BUY PE" if fv_diff > 0 else "BUY CE" if fv_diff < 0 else ""
+                            
+                            bias = tv_bias
+                            if tv_bias != "" and tv_bias == fv_bias:
+                                bias += " ⭐️"
                             
                             if n == 2:
                                 if diff > 0:
@@ -368,7 +382,7 @@ def mega_quote_loop():
                                 "pair": f"{ce_strike} / {pe_strike}",
                                 "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv,
                                 "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv,
-                                "diff": diff, "bias": bias, "lot": LOT_SIZES.get(stock, 1)
+                                "diff": diff, "fv_diff": fv_diff, "bias": bias, "lot": LOT_SIZES.get(stock, 1)
                             })
                             
                         if rows:

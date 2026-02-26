@@ -325,14 +325,17 @@
                                 <th>Strikes</th>
                                 <th>CE Strike</th><th>CE LTP / FV</th><th>CE Intrinsic</th><th>CE TV</th>
                                 <th>PE Strike</th><th>PE LTP / FV</th><th>PE Intrinsic</th><th>PE TV</th>
-                                <th>TV Diff (CE-PE)</th><th>BIAS</th>
+                                <th>TV Diff (CE-PE)</th><th>FV Diff (CE-PE)</th><th>BIAS</th>
                             </tr>
                     `;
 
                     idx.rows.forEach(row => {
-                        let biasHtml = row.bias === 'BUY CE'
-                            ? `<span class="buy-ce">BUY CE</span>`
-                            : row.bias === 'BUY PE' ? `<span class="buy-pe">BUY PE</span>` : '-';
+                        let biasHtml = '-';
+                        if (row.bias && row.bias.includes('BUY CE')) {
+                            biasHtml = `<span class="buy-ce">${row.bias}</span>`;
+                        } else if (row.bias && row.bias.includes('BUY PE')) {
+                            biasHtml = `<span class="buy-pe">${row.bias}</span>`;
+                        }
 
                         const uniqueKeyCE = idx.name + '_' + row.ce_strike + '_CE';
                         const uniqueKeyPE = idx.name + '_' + row.pe_strike + '_PE';
@@ -367,6 +370,7 @@
                                 <td class="val-put" style="${isBestPe ? 'background:#d97706; color:#fff; border-radius:5px;' : ''}">${row.pe_ltp} <br><span style="font-size:11px; color:${isBestPe ? '#fff' : '#94a3b8'};">(${row.pe_fv})${peBestIcon}</span></td>
                                 <td>${row.pe_iv}</td>${peTvHtml}
                                 <td>${row.diff}</td>
+                                <td>${row.fv_diff !== undefined ? row.fv_diff : '-'}</td>
                                 <td>${biasHtml}</td>
                             </tr>
                         `;
