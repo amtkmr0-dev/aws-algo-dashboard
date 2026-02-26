@@ -153,9 +153,6 @@ def process_index(name, key, expiry):
         ce_tv = round(ce_ltp - ce_iv, 2)
         pe_tv = round(pe_ltp - pe_iv, 2)
         
-        ce_impv = calculate_iv(ce_ltp, spot, ce_strike, days_to_expiry, 0.1, 'CE')
-        pe_impv = calculate_iv(pe_ltp, spot, pe_strike, days_to_expiry, 0.1, 'PE')
-        
         # Calculate Theoretical Fair Value using baseline 14% volatility (T must be in years)
         ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
         pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
@@ -167,8 +164,8 @@ def process_index(name, key, expiry):
 
         rows.append({
             "pair": f"{ce_strike} / {pe_strike}",
-            "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "ce_impv": ce_impv,
-            "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "pe_impv": pe_impv,
+            "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv,
+            "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv,
             "diff": diff, "bias": bias, "lot": lot
         })
         
@@ -353,9 +350,6 @@ def mega_quote_loop():
                             ce_tv = round(ce_ltp - ce_iv, 2)
                             pe_tv = round(pe_ltp - pe_iv, 2)
                             
-                            ce_impv = calculate_iv(ce_ltp, spot, ce_strike, days_to_expiry, 0.1, 'CE')
-                            pe_impv = calculate_iv(pe_ltp, spot, pe_strike, days_to_expiry, 0.1, 'PE')
-                            
                             ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.16), 2)
                             pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.16), 2)
 
@@ -372,8 +366,8 @@ def mega_quote_loop():
                             
                             rows.append({
                                 "pair": f"{ce_strike} / {pe_strike}",
-                                "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "ce_impv": ce_impv,
-                                "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "pe_impv": pe_impv,
+                                "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv,
+                                "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv,
                                 "diff": diff, "bias": bias, "lot": LOT_SIZES.get(stock, 1)
                             })
                             

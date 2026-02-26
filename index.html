@@ -284,20 +284,22 @@
                 let bestTrades = [];
                 data.indices.forEach(idx => {
                     idx.rows.forEach(row => {
-                        if (row.ce_impv > 0) {
+                        if (row.ce_fv !== undefined && row.ce_ltp > 5) {
+                            let gap = row.ce_ltp - row.ce_fv;
                             let margin = row.ce_ltp * idx.lot;
-                            bestTrades.push({ stock: idx.name, type: 'CE', strike: row.ce_strike, impv: row.ce_impv, ltp: row.ce_ltp, lot: idx.lot, margin: margin });
+                            bestTrades.push({ stock: idx.name, type: 'CE', strike: row.ce_strike, gap: gap, ltp: row.ce_ltp, lot: idx.lot, margin: margin });
                         }
-                        if (row.pe_impv > 0) {
+                        if (row.pe_fv !== undefined && row.pe_ltp > 5) {
+                            let gap = row.pe_ltp - row.pe_fv;
                             let margin = row.pe_ltp * idx.lot;
-                            bestTrades.push({ stock: idx.name, type: 'PE', strike: row.pe_strike, impv: row.pe_impv, ltp: row.pe_ltp, lot: idx.lot, margin: margin });
+                            bestTrades.push({ stock: idx.name, type: 'PE', strike: row.pe_strike, gap: gap, ltp: row.pe_ltp, lot: idx.lot, margin: margin });
                         }
                     });
                 });
 
-                bestTrades.sort((a, b) => a.impv - b.impv);
+                bestTrades.sort((a, b) => a.gap - b.gap);
                 let top3 = bestTrades.slice(0, 3);
-                let globalMinIv = top3.length > 0 ? top3[0].impv : Infinity;
+                let minGap = top3.length > 0 ? top3[0].gap : Infinity;
 
                 let html = '';
                 if (top3.length > 0) {
@@ -306,7 +308,8 @@
                     html += `<div style="display:flex; justify-content:space-around; font-weight:bold; font-size: 16px;">`;
                     top3.forEach((t, i) => {
                         let rank = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉";
-                        html += `<div>${rank} ${t.stock} ${t.strike} ${t.type} @ <span style="font-size: 20px;">${t.impv}% IV</span><br><span style="font-size:13px; font-weight:600; color: #4b5563;">Capital Req: ₹${Math.round(t.margin).toLocaleString('en-IN')} (Lot: ${t.lot} × ₹${t.ltp})</span></div>`;
+                        let sign = t.gap > 0 ? "+" : "";
+                        html += `<div>${rank} ${t.stock} ${t.strike} ${t.type} @ <span style="font-size: 20px;">FV ${sign}${Math.round(t.gap)}</span><br><span style="font-size:13px; font-weight:600; color: #4b5563;">Capital Req: ₹${Math.round(t.margin).toLocaleString('en-IN')} (Lot: ${t.lot} × ₹${t.ltp})</span></div>`;
                     });
                     html += `</div></div>`;
                 }
@@ -320,8 +323,8 @@
                             </tr>
                             <tr>
                                 <th>Strikes</th>
-                                <th>CE Strike</th><th>CE LTP / FV</th><th>CE Intrinsic</th><th>CE TV</th><th>CE ImpV(%)</th>
-                                <th>PE Strike</th><th>PE LTP / FV</th><th>PE Intrinsic</th><th>PE TV</th><th>PE ImpV(%)</th>
+                                <th>CE Strike</th><th>CE LTP / FV</th><th>CE Intrinsic</th><th>CE TV</th>
+                                <th>PE Strike</th><th>PE LTP / FV</th><th>PE Intrinsic</th><th>PE TV</th>
                                 <th>TV Diff (CE-PE)</th><th>BIAS</th>
                             </tr>
                     `;
@@ -345,22 +348,24 @@
                         let ceTvHtml = row.ce_tv <= 0 ? `<td style="font-weight:bold;" class="highlight-tv">${row.ce_tv} 🔔买</td>` : `<td style="font-weight:bold;">${row.ce_tv}</td>`;
                         let peTvHtml = row.pe_tv <= 0 ? `<td style="font-weight:bold;" class="highlight-tv">${row.pe_tv} 🔔买</td>` : `<td style="font-weight:bold;">${row.pe_tv}</td>`;
 
-                        let isBestCe = (row.ce_impv === globalMinIv && globalMinIv !== Infinity);
-                        let isBestPe = (row.pe_impv === globalMinIv && globalMinIv !== Infinity);
+                        let ceGap = (row.ce_fv !== undefined) ? (row.ce_ltp - row.ce_fv) : Infinity;
+                        let peGap = (row.pe_fv !== undefined) ? (row.pe_ltp - row.pe_fv) : Infinity;
 
-                        let ceImpvHtml = isBestCe
-                            ? `<td class="best-trade">${row.ce_impv}% 🏆</td>`
-                            : `<td style="color:#a855f7; font-weight:bold;">${row.ce_impv}%</td>`;
+                        let isBestCe = (ceGap === minGap && minGap !== Infinity);
+                        let isBestPe = (peGap === minGap && minGap !== Infinity);
 
-                        let peImpvHtml = isBestPe
-                            ? `<td class="best-trade">${row.pe_impv}% 🏆</td>`
-                            : `<td style="color:#a855f7; font-weight:bold;">${row.pe_impv}%</td>`;
+                        let ceBestIcon = isBestCe ? " 🏆" : "";
+                        let peBestIcon = isBestPe ? " 🏆" : "";
 
                         html += `
                             <tr>
                                 <td style="font-weight: bold; color: #cbd5e1;">${row.pair}</td>
-                                <td class="val-strike">${row.ce_strike}</td><td class="val-call">${row.ce_ltp} <br><span style="font-size:11px; color:#94a3b8;">(${row.ce_fv})</span></td><td>${row.ce_iv}</td>${ceTvHtml}${ceImpvHtml}
-                                <td class="val-strike">${row.pe_strike}</td><td class="val-put">${row.pe_ltp} <br><span style="font-size:11px; color:#94a3b8;">(${row.pe_fv})</span></td><td>${row.pe_iv}</td>${peTvHtml}${peImpvHtml}
+                                <td class="val-strike">${row.ce_strike}</td>
+                                <td class="val-call" style="${isBestCe ? 'background:#d97706; color:#fff; border-radius:5px;' : ''}">${row.ce_ltp} <br><span style="font-size:11px; color:${isBestCe ? '#fff' : '#94a3b8'};">(${row.ce_fv})${ceBestIcon}</span></td>
+                                <td>${row.ce_iv}</td>${ceTvHtml}
+                                <td class="val-strike">${row.pe_strike}</td>
+                                <td class="val-put" style="${isBestPe ? 'background:#d97706; color:#fff; border-radius:5px;' : ''}">${row.pe_ltp} <br><span style="font-size:11px; color:${isBestPe ? '#fff' : '#94a3b8'};">(${row.pe_fv})${peBestIcon}</span></td>
+                                <td>${row.pe_iv}</td>${peTvHtml}
                                 <td>${row.diff}</td>
                                 <td>${biasHtml}</td>
                             </tr>
