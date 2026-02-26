@@ -87,7 +87,7 @@ def calculate_iv(market_price, S, K, T_days, r, opt_type):
 def get_days_to_expiry(expiry_str):
     try:
         exp_date = datetime.strptime(expiry_str + " 15:30:00", "%Y-%m-%d %H:%M:%S")
-        now = datetime.now()
+        now = datetime.now(timezone(timedelta(hours=5, minutes=30))).replace(tzinfo=None)
         diff = (exp_date - now).total_seconds() / 86400.0
         return max(0.001, diff)
     except: return 1.0
@@ -156,6 +156,10 @@ def process_index(name, key, expiry):
         ce_impv = calculate_iv(ce_ltp, spot, ce_strike, days_to_expiry, 0.1, 'CE')
         pe_impv = calculate_iv(pe_ltp, spot, pe_strike, days_to_expiry, 0.1, 'PE')
         
+        # Calculate Theoretical Fair Value using baseline 14% volatility
+        ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry, 0.1, 0.14), 2)
+        pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry, 0.1, 0.14), 2)
+        
         diff = round(ce_tv - pe_tv, 2)
         bias = "BUY PE" if diff > 0 else "BUY CE" if diff < 0 else ""
         
@@ -163,8 +167,8 @@ def process_index(name, key, expiry):
 
         rows.append({
             "pair": f"{ce_strike} / {pe_strike}",
-            "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "ce_impv": ce_impv,
-            "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "pe_impv": pe_impv,
+            "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "ce_impv": ce_impv,
+            "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "pe_impv": pe_impv,
             "diff": diff, "bias": bias, "lot": lot
         })
         
@@ -352,6 +356,9 @@ def mega_quote_loop():
                             ce_impv = calculate_iv(ce_ltp, spot, ce_strike, days_to_expiry, 0.1, 'CE')
                             pe_impv = calculate_iv(pe_ltp, spot, pe_strike, days_to_expiry, 0.1, 'PE')
                             
+                            ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry, 0.1, 0.16), 2)
+                            pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry, 0.1, 0.16), 2)
+
                             diff = round(ce_tv - pe_tv, 2)
                             bias = "BUY PE" if diff > 0 else "BUY CE" if diff < 0 else ""
                             
@@ -365,8 +372,8 @@ def mega_quote_loop():
                             
                             rows.append({
                                 "pair": f"{ce_strike} / {pe_strike}",
-                                "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "ce_impv": ce_impv,
-                                "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "pe_impv": pe_impv,
+                                "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "ce_impv": ce_impv,
+                                "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "pe_impv": pe_impv,
                                 "diff": diff, "bias": bias, "lot": LOT_SIZES.get(stock, 1)
                             })
                             

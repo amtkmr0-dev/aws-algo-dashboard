@@ -358,8 +358,8 @@
                             </tr>
                             <tr>
                                 <th>Strikes</th>
-                                <th>CE Strike</th><th>CE LTP</th><th>CE Intrinsic</th><th>CE TV</th><th>CE ImpV(%)</th>
-                                <th>PE Strike</th><th>PE LTP</th><th>PE Intrinsic</th><th>PE TV</th><th>PE ImpV(%)</th>
+                                <th>CE Strike</th><th>CE LTP / FV</th><th>CE Intrinsic</th><th>CE TV</th><th>CE ImpV(%)</th>
+                                <th>PE Strike</th><th>PE LTP / FV</th><th>PE Intrinsic</th><th>PE TV</th><th>PE ImpV(%)</th>
                                 <th>TV Diff (CE-PE)</th><th>BIAS</th>
                             </tr>
                     `;
@@ -398,8 +398,8 @@
                         html += `
                             <tr>
                                 <td style="font-weight: bold; color: #cbd5e1;">${row.pair}</td>
-                                <td class="val-strike">${row.ce_strike}</td><td class="val-call">${row.ce_ltp}</td><td>${row.ce_iv}</td>${ceTvHtml}${ceImpvHtml}
-                                <td class="val-strike">${row.pe_strike}</td><td class="val-put">${row.pe_ltp}</td><td>${row.pe_iv}</td>${peTvHtml}${peImpvHtml}
+                                <td class="val-strike">${row.ce_strike}</td><td class="val-call">${row.ce_ltp} <br><span style="font-size:11px; color:#94a3b8;">(${row.ce_fv})</span></td><td>${row.ce_iv}</td>${ceTvHtml}${ceImpvHtml}
+                                <td class="val-strike">${row.pe_strike}</td><td class="val-put">${row.pe_ltp} <br><span style="font-size:11px; color:#94a3b8;">(${row.pe_fv})</span></td><td>${row.pe_iv}</td>${peTvHtml}${peImpvHtml}
                                 <td>${row.diff}</td>
                                 <td>${biasHtml}</td>
                             </tr>
