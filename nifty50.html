@@ -242,6 +242,36 @@
             margin-bottom: 20px;
             font-weight: bold;
         }
+
+        .filter-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .filter-btn {
+            background-color: #1e293b;
+            color: #cbd5e1;
+            border: 1px solid #3b82f6;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-btn:hover {
+            background-color: #2563eb;
+            color: #ffffff;
+        }
+
+        .filter-btn.active {
+            background-color: #3b82f6;
+            color: #ffffff;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
     </style>
 </head>
 
@@ -270,11 +300,27 @@
             </div>
         </div>
 
+        <div class="filter-container">
+            <button class="filter-btn active" onclick="setFilter('ALL')" id="filter-ALL">SHOW ALL</button>
+            <button class="filter-btn" onclick="setFilter('POSITIVE')" id="filter-POSITIVE">POSITIVE</button>
+            <button class="filter-btn" onclick="setFilter('NEGATIVE')" id="filter-NEGATIVE">NEGATIVE</button>
+            <button class="filter-btn" onclick="setFilter('NEUTRAL')" id="filter-NEUTRAL">NEUTRAL</button>
+        </div>
+
         <div id="error-banner">Connecting to local WebSocket stream...</div>
         <div id="tables-container"></div>
     </div>
 
     <script>
+        let currentFilter = 'ALL';
+        
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('filter-' + filterType).classList.add('active');
+            if(window.lastData) renderData(window.lastData);
+        }
+        
         const playBeep = () => {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -318,7 +364,12 @@
                     document.getElementById('neg-stat').innerText = `${data.summary.neg_count} | ${data.summary.neg_weight}%`;
                     document.getElementById('neu-stat').innerText = `${data.summary.neu_count} | ${data.summary.neu_weight}%`;
                 }
-
+                
+                window.lastData = data;
+                renderData(data);
+            };
+            
+            function renderData(data) {
                 let bestTrades = [];
                 data.indices.forEach(idx => {
                     idx.rows.forEach(row => {
@@ -353,7 +404,17 @@
                 }
 
                 let shouldBeep = false;
-                data.indices.forEach(idx => {
+                
+                let filteredIndices = data.indices;
+                if(currentFilter !== 'ALL') {
+                    filteredIndices = data.indices.filter(idx => idx.status === currentFilter);
+                }
+                
+                if (filteredIndices.length === 0) {
+                    html += `<div style="text-align: center; color: #94a3b8; padding: 20px;">No stocks match the current filter.</div>`;
+                }
+                
+                filteredIndices.forEach(idx => {
                     html += `
                         <table>
                             <tr>
