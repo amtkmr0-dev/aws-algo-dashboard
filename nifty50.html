@@ -421,31 +421,39 @@
                 let minGap = top3.length > 0 ? top3[0].gap : Infinity;
 
                 let html = '';
-                if (top3.length > 0) {
-                    html += `<div style="background:linear-gradient(135deg, #1e1b4b, #312e81); color:#e0e7ff; padding:20px; border-radius:12px; margin-bottom:25px; text-align:center; border: 1px solid #4338ca; box-shadow: 0 4px 15px rgba(67, 56, 202, 0.3);">`;
-                    html += `<h3 style="margin:0 0 15px 0; font-weight:800; letter-spacing: 1px; color:#c7d2fe;">💎 AI TOP 3 MISPRICED OPPORTUNITIES IN NIFTY 50 💎</h3>`;
-                    html += `<div style="display:flex; justify-content:space-around; font-weight:bold; font-size: 15px;">`;
-                    top3.forEach((t, i) => {
-                        let rank = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉";
-                        let sign = t.gap > 0 ? "+" : "";
-                        html += `<div><span style="display:block; margin-bottom: 8px;">${rank} ${t.stock} <span style="color:#fbbf24;">${t.strike} ${t.type}</span></span> <span style="font-size: 20px; color:${t.gap > 0 ? '#34d399' : '#f87171'};">FV ${sign}${Math.round(t.gap)}</span><br><span style="font-size:12px; font-weight:500; color: #a5b4fc; margin-top:5px; display:inline-block;">Cap: ₹${Math.round(t.margin).toLocaleString('en-IN')} (Lot: ${t.lot} × ₹${t.ltp})</span></div>`;
-                    });
-                    html += `</div></div>`;
-                }
+                if (data.indices && data.indices.length === 0) {
+                    html += `<div style="text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 18px; background: #111827; border-radius: 12px; border: 1px dashed #334155; margin-top: 20px;">
+                                ⚠️ No Live Data Found.<br><br>
+                                <span style="font-size: 14px; font-weight: normal; color: #64748b;">
+                                    If this screen doesn't update within 10 seconds, either your filter is too strict, the markets are closed, or your <strong>UPSTOX_ACCESS_TOKEN</strong> in keys.env is invalid.
+                                </span>
+                            </div>`;
+                } else {
+                    if (top3.length > 0) {
+                        html += `<div style="background:linear-gradient(135deg, #1e1b4b, #312e81); color:#e0e7ff; padding:20px; border-radius:12px; margin-bottom:25px; text-align:center; border: 1px solid #4338ca; box-shadow: 0 4px 15px rgba(67, 56, 202, 0.3);">`;
+                        html += `<h3 style="margin:0 0 15px 0; font-weight:800; letter-spacing: 1px; color:#c7d2fe;">💎 AI TOP 3 MISPRICED OPPORTUNITIES IN NIFTY 50 💎</h3>`;
+                        html += `<div style="display:flex; justify-content:space-around; font-weight:bold; font-size: 15px;">`;
+                        top3.forEach((t, i) => {
+                            let rank = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉";
+                            let sign = t.gap > 0 ? "+" : "";
+                            html += `<div><span style="display:block; margin-bottom: 8px;">${rank} ${t.stock} <span style="color:#fbbf24;">${t.strike} ${t.type}</span></span> <span style="font-size: 20px; color:${t.gap > 0 ? '#34d399' : '#f87171'};">FV ${sign}${Math.round(t.gap)}</span><br><span style="font-size:12px; font-weight:500; color: #a5b4fc; margin-top:5px; display:inline-block;">Cap: ₹${Math.round(t.margin).toLocaleString('en-IN')} (Lot: ${t.lot} × ₹${t.ltp})</span></div>`;
+                        });
+                        html += `</div></div>`;
+                    }
 
-                let shouldBeep = false;
+                    let shouldBeep = false;
 
-                let filteredIndices = data.indices;
-                if (currentFilter !== 'ALL') {
-                    filteredIndices = data.indices.filter(idx => idx.status === currentFilter);
-                }
+                    let filteredIndices = data.indices;
+                    if (currentFilter !== 'ALL') {
+                        filteredIndices = data.indices.filter(idx => idx.status === currentFilter);
+                    }
 
-                if (filteredIndices.length === 0) {
-                    html += `<div style="text-align: center; color: #94a3b8; padding: 20px;">No stocks match the current filter.</div>`;
-                }
+                    if (filteredIndices.length === 0) {
+                        html += `<div style="text-align: center; color: #94a3b8; padding: 20px;">No stocks match the current filter.</div>`;
+                    }
 
-                filteredIndices.forEach(idx => {
-                    html += `
+                    filteredIndices.forEach(idx => {
+                        html += `
                         <table>
                             <tr>
                                 <td colspan="11" class="table-title">
@@ -461,38 +469,38 @@
                             </tr>
                     `;
 
-                    idx.rows.forEach(row => {
-                        let biasHtml = '-';
-                        if (row.bias && row.bias.includes('BUY CE')) {
-                            biasHtml = `<span class="buy-ce">${row.bias}</span>`;
-                        } else if (row.bias && row.bias.includes('BUY PE')) {
-                            biasHtml = `<span class="buy-pe">${row.bias}</span>`;
-                        }
+                        idx.rows.forEach(row => {
+                            let biasHtml = '-';
+                            if (row.bias && row.bias.includes('BUY CE')) {
+                                biasHtml = `<span class="buy-ce">${row.bias}</span>`;
+                            } else if (row.bias && row.bias.includes('BUY PE')) {
+                                biasHtml = `<span class="buy-pe">${row.bias}</span>`;
+                            }
 
-                        const uniqueKeyCE = idx.name + '_' + row.ce_strike + '_CE';
-                        const uniqueKeyPE = idx.name + '_' + row.pe_strike + '_PE';
+                            const uniqueKeyCE = idx.name + '_' + row.ce_strike + '_CE';
+                            const uniqueKeyPE = idx.name + '_' + row.pe_strike + '_PE';
 
-                        if (row.ce_tv <= 0) {
-                            if (!alertedSet.has(uniqueKeyCE)) { alertedSet.add(uniqueKeyCE); shouldBeep = true; }
-                        } else { alertedSet.delete(uniqueKeyCE); }
+                            if (row.ce_tv <= 0) {
+                                if (!alertedSet.has(uniqueKeyCE)) { alertedSet.add(uniqueKeyCE); shouldBeep = true; }
+                            } else { alertedSet.delete(uniqueKeyCE); }
 
-                        if (row.pe_tv <= 0) {
-                            if (!alertedSet.has(uniqueKeyPE)) { alertedSet.add(uniqueKeyPE); shouldBeep = true; }
-                        } else { alertedSet.delete(uniqueKeyPE); }
+                            if (row.pe_tv <= 0) {
+                                if (!alertedSet.has(uniqueKeyPE)) { alertedSet.add(uniqueKeyPE); shouldBeep = true; }
+                            } else { alertedSet.delete(uniqueKeyPE); }
 
-                        let ceTvHtml = row.ce_tv <= 0 ? `<td style="font-weight:bold;" class="highlight-tv">${row.ce_tv} 🔔买</td>` : `<td style="font-weight:bold;">${row.ce_tv}</td>`;
-                        let peTvHtml = row.pe_tv <= 0 ? `<td style="font-weight:bold;" class="highlight-tv">${row.pe_tv} 🔔买</td>` : `<td style="font-weight:bold;">${row.pe_tv}</td>`;
+                            let ceTvHtml = row.ce_tv <= 0 ? `<td style="font-weight:bold;" class="highlight-tv">${row.ce_tv} 🔔买</td>` : `<td style="font-weight:bold;">${row.ce_tv}</td>`;
+                            let peTvHtml = row.pe_tv <= 0 ? `<td style="font-weight:bold;" class="highlight-tv">${row.pe_tv} 🔔买</td>` : `<td style="font-weight:bold;">${row.pe_tv}</td>`;
 
-                        let ceGap = (row.ce_fv !== undefined) ? (row.ce_ltp - row.ce_fv) : Infinity;
-                        let peGap = (row.pe_fv !== undefined) ? (row.pe_ltp - row.pe_fv) : Infinity;
+                            let ceGap = (row.ce_fv !== undefined) ? (row.ce_ltp - row.ce_fv) : Infinity;
+                            let peGap = (row.pe_fv !== undefined) ? (row.pe_ltp - row.pe_fv) : Infinity;
 
-                        let isBestCe = (ceGap === minGap && minGap !== Infinity);
-                        let isBestPe = (peGap === minGap && minGap !== Infinity);
+                            let isBestCe = (ceGap === minGap && minGap !== Infinity);
+                            let isBestPe = (peGap === minGap && minGap !== Infinity);
 
-                        let ceBestIcon = isBestCe ? " 🏆" : "";
-                        let peBestIcon = isBestPe ? " 🏆" : "";
+                            let ceBestIcon = isBestCe ? " 🏆" : "";
+                            let peBestIcon = isBestPe ? " 🏆" : "";
 
-                        html += `
+                            html += `
                             <tr>
                                 <td style="font-weight: 600; color: #94a3b8; font-size: 12px;">${row.pair}</td>
                                 <td class="val-strike">${row.ce_strike}</td>
@@ -506,9 +514,10 @@
                                 <td>${biasHtml}</td>
                             </tr>
                         `;
+                        });
+                        html += `</table>`;
                     });
-                    html += `</table>`;
-                });
+                }
 
                 if (shouldBeep) playBeep();
 
