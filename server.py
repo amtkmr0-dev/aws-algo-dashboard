@@ -192,8 +192,11 @@ def process_index(name, key, expiry):
         pe_tv = round(pe_ltp - pe_iv, 2)
         
         # Calculate Theoretical Fair Value using Merton Jump-Diffusion Volatility Model
-        ce_fv = round(mjd_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.12), 2)
-        pe_fv = round(mjd_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.12), 2)
+        # Using the live India VIX percentage (capped locally for stability)
+        dynamic_vol = max(0.05, min(0.35, current_vix / 100.0))
+        
+        ce_fv = round(mjd_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, dynamic_vol), 2)
+        pe_fv = round(mjd_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, dynamic_vol), 2)
         
         # Calculate standard Black-Scholes for ML reference
         bs_ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
@@ -256,6 +259,23 @@ threading.Thread(target=data_fetcher_loop, daemon=True).start()
 mega_cache = {}
 nifty_meta = {}
 all_instrument_keys = []
+current_vix = 14.0  # Default VIX baseline 14%
+
+def fetch_india_vix():
+    global current_vix
+    while True:
+        try:
+            url = "https://api.upstox.com/v2/market-quote/quotes?instrument_key=NSE_INDEX|India VIX"
+            r = requests.get(url, headers=HEADERS, timeout=10)
+            data = r.json()
+            if data.get("status") == "success":
+                vix_data = data["data"].get("NSE_INDEX|India VIX", {})
+                current_vix = vix_data.get("last_price", 14.0)
+        except Exception as e:
+            print(f"Error fetching VIX: {e}")
+        time.sleep(15)  # Update VIX every 15 seconds
+
+threading.Thread(target=fetch_india_vix, daemon=True).start()
 
 def initialize_nifty_meta():
     global all_instrument_keys
@@ -400,9 +420,10 @@ def mega_quote_loop():
                             
                             ce_tv = round(ce_ltp - ce_iv, 2)
                             pe_tv = round(pe_ltp - pe_iv, 2)
+                            dynamic_vol = max(0.05, min(0.35, current_vix / 100.0))
                             
-                            ce_fv = round(mjd_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.12), 2)
-                            pe_fv = round(mjd_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.12), 2)
+                            ce_fv = round(mjd_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, dynamic_vol), 2)
+                            pe_fv = round(mjd_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, dynamic_vol), 2)
                             
                             bs_ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
                             bs_pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
