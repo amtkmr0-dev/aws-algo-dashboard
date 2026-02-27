@@ -11,10 +11,24 @@ import nifty_weights
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
-from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
 
 import json
+import os
+
+LOG_DIR = "market_data_logs"
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+
+def log_market_data(data, prefix):
+    if not data: return
+    today_str = datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime('%Y-%m-%d')
+    filepath = os.path.join(LOG_DIR, f"{prefix}_{today_str}.jsonl")
+    try:
+        with open(filepath, "a") as f:
+            f.write(json.dumps(data) + "\n")
+    except Exception as e:
+        print(f"Error logging data: {e}")
 try:
     with open("lot_sizes.json", "r") as f:
         LOT_SIZES = json.load(f)
@@ -225,6 +239,8 @@ def data_fetcher_loop():
                     "timestamp": datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime('%H:%M:%S'),
                     "indices": results
                 }
+                # Save to disk
+                log_market_data(latest_data, "indices")
         except Exception as e:
             print(f"Fetch loop error: {e}")
             
@@ -434,6 +450,9 @@ def mega_quote_loop():
                         "summary": summary,
                         "indices": results
                     }
+                    
+                    # Save Nifty 50 data to disk
+                    log_market_data(latest_nifty_data, "nifty50_chain")
                     
         except Exception as e:
             print("Mega quote outer exception:", e)
