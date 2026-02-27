@@ -78,27 +78,30 @@
 
         table {
             width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 40px;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-bottom: 35px;
             background-color: #111827;
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+            border: 1px solid #1f2937;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
         }
 
         th,
         td {
-            padding: 14px 16px;
+            padding: 12px 15px;
             text-align: center;
             border-bottom: 1px solid #1f2937;
+            font-size: 14px;
         }
 
         th {
-            background-color: #1f2937;
-            color: #9ca3af;
+            background-color: #1b2436;
+            color: #94a3b8;
             text-transform: uppercase;
-            font-size: 12px;
-            letter-spacing: 1px;
+            font-size: 11px;
+            letter-spacing: 0.5px;
             font-weight: 600;
         }
 
@@ -113,36 +116,42 @@
 
         .table-title {
             background-color: #0f172a;
-            padding: 16px 20px;
+            padding: 14px 20px;
             font-weight: 700;
-            color: #f8fafc;
+            color: #e2e8f0;
             text-align: left;
-            font-size: 16px;
-            border-bottom: 2px solid #3b82f6;
+            font-size: 15px;
+            border-bottom: 1px solid #1e293b;
+            letter-spacing: 0.5px;
         }
 
         .buy-pe {
             color: #ef4444;
-            font-weight: 800;
-            text-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+            font-weight: 700;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
         }
 
         .buy-ce {
             color: #10b981;
-            font-weight: 800;
-            text-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+            font-weight: 700;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
         }
 
         .val-strike {
-            color: #ca8a04;
+            color: #eab308;
+            font-weight: 600;
         }
 
         .val-call {
-            color: #10b981;
+            color: #34d399;
         }
 
         .val-put {
-            color: #ef4444;
+            color: #f87171;
         }
 
         .highlight-tv {
@@ -301,15 +310,14 @@
                 let top3 = bestTrades.slice(0, 3);
                 let minGap = top3.length > 0 ? top3[0].gap : Infinity;
 
-                let html = '';
                 if (top3.length > 0) {
-                    html += `<div style="background:linear-gradient(45deg, #d97706, #fbbf24); color:#111827; padding:15px; border-radius:10px; margin-bottom:20px; text-align:center; box-shadow:0 0 15px #fbbf24; animation: pulse-gold 1.5s infinite;">`;
-                    html += `<h3 style="margin:0 0 10px 0; font-weight:900;">🏆 AI'S TOP 3 CHEAPEST PREMIUMS TODAY 🏆</h3>`;
-                    html += `<div style="display:flex; justify-content:space-around; font-weight:bold; font-size: 16px;">`;
+                    html += `<div style="background:linear-gradient(135deg, #1e1b4b, #312e81); color:#e0e7ff; padding:20px; border-radius:12px; margin-bottom:25px; text-align:center; border: 1px solid #4338ca; box-shadow: 0 4px 15px rgba(67, 56, 202, 0.3);">`;
+                    html += `<h3 style="margin:0 0 15px 0; font-weight:800; letter-spacing: 1px; color:#c7d2fe;">💎 AI TOP 3 MISPRICED OPPORTUNITIES 💎</h3>`;
+                    html += `<div style="display:flex; justify-content:space-around; font-weight:bold; font-size: 15px;">`;
                     top3.forEach((t, i) => {
                         let rank = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉";
                         let sign = t.gap > 0 ? "+" : "";
-                        html += `<div>${rank} ${t.stock} ${t.strike} ${t.type} @ <span style="font-size: 20px;">FV ${sign}${Math.round(t.gap)}</span><br><span style="font-size:13px; font-weight:600; color: #4b5563;">Capital Req: ₹${Math.round(t.margin).toLocaleString('en-IN')} (Lot: ${t.lot} × ₹${t.ltp})</span></div>`;
+                        html += `<div><span style="display:block; margin-bottom: 8px;">${rank} ${t.stock} <span style="color:#fbbf24;">${t.strike} ${t.type}</span></span> <span style="font-size: 20px; color:${t.gap > 0 ? '#34d399' : '#f87171'};">FV ${sign}${Math.round(t.gap)}</span><br><span style="font-size:12px; font-weight:500; color: #a5b4fc; margin-top:5px; display:inline-block;">Cap: ₹${Math.round(t.margin).toLocaleString('en-IN')} (Lot: ${t.lot} × ₹${t.ltp})</span></div>`;
                     });
                     html += `</div></div>`;
                 }
@@ -319,7 +327,10 @@
                     html += `
                         <table>
                             <tr>
-                                <td colspan="12" class="table-title">${idx.name} (Spot: ${idx.spot} | Exp: ${idx.expiry} | Lot: ${idx.lot})</td>
+                                <td colspan="12" class="table-title">
+                                    <span style="color: #38bdf8; margin-right: 15px;">${idx.name}</span>
+                                    <span style="color: #94a3b8; font-size: 13px; font-weight: 500;">Spot: <span style="color: #cbd5e1;">${idx.spot}</span> &nbsp;|&nbsp; Exp: <span style="color: #cbd5e1;">${idx.expiry}</span> &nbsp;|&nbsp; Lot: <span style="color: #cbd5e1;">${idx.lot}</span></span>
+                                </td>
                             </tr>
                             <tr>
                                 <th>Strikes</th>
@@ -362,15 +373,15 @@
 
                         html += `
                             <tr>
-                                <td style="font-weight: bold; color: #cbd5e1;">${row.pair}</td>
+                                <td style="font-weight: 600; color: #94a3b8; font-size: 12px;">${row.pair}</td>
                                 <td class="val-strike">${row.ce_strike}</td>
-                                <td class="val-call" style="${isBestCe ? 'background:#d97706; color:#fff; border-radius:5px;' : ''}">${row.ce_ltp} <br><span style="font-size:11px; color:${isBestCe ? '#fff' : '#94a3b8'};">(${row.ce_fv})${ceBestIcon}</span></td>
-                                <td>${row.ce_iv}</td>${ceTvHtml}
+                                <td class="val-call" style="${isBestCe ? 'border-bottom: 2px solid #818cf8; font-weight:bold;' : ''}">${row.ce_ltp} <br><span style="font-size:11px; color:#64748b;">(${row.ce_fv})${ceBestIcon}</span></td>
+                                <td style="color: #94a3b8;">${row.ce_iv}</td>${ceTvHtml}
                                 <td class="val-strike">${row.pe_strike}</td>
-                                <td class="val-put" style="${isBestPe ? 'background:#d97706; color:#fff; border-radius:5px;' : ''}">${row.pe_ltp} <br><span style="font-size:11px; color:${isBestPe ? '#fff' : '#94a3b8'};">(${row.pe_fv})${peBestIcon}</span></td>
-                                <td>${row.pe_iv}</td>${peTvHtml}
-                                <td>${row.diff}</td>
-                                <td>${row.fv_diff !== undefined ? row.fv_diff : '-'}</td>
+                                <td class="val-put" style="${isBestPe ? 'border-bottom: 2px solid #818cf8; font-weight:bold;' : ''}">${row.pe_ltp} <br><span style="font-size:11px; color:#64748b;">(${row.pe_fv})${peBestIcon}</span></td>
+                                <td style="color: #94a3b8;">${row.pe_iv}</td>${peTvHtml}
+                                <td style="color: ${row.diff > 0 ? '#10b981' : (row.diff < 0 ? '#ef4444' : '#94a3b8')}; font-weight:600;">${row.diff}</td>
+                                <td style="color: #64748b;">${row.fv_diff !== undefined ? row.fv_diff : '-'}</td>
                                 <td>${biasHtml}</td>
                             </tr>
                         `;
