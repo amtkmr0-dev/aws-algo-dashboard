@@ -101,6 +101,26 @@ def mjd_put_price(S, K, T, r, sigma, lambda_j=1.0, mu_j=-0.05, sigma_j=0.15, N=1
         return price
     except: return 0.0
 
+def cs_call_price(S, K, T, r, sigma, skew=-1.5, kurt=4.0):
+    try:
+        bs_price = bs_call_price(S, K, T, r, sigma)
+        d1 = (math.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * math.sqrt(T))
+        d2 = d1 - sigma * math.sqrt(T)
+        term1 = (skew / 6.0) * S * sigma * math.sqrt(T) * (d2) * norm_pdf(d1)
+        term2 = (kurt / 24.0) * S * sigma * math.sqrt(T) * (d2**2 - 1) * norm_pdf(d1)
+        return max(0.0, bs_price + term1 + term2)
+    except: return 0.0
+
+def cs_put_price(S, K, T, r, sigma, skew=-1.5, kurt=4.0):
+    try:
+        bs_price = bs_put_price(S, K, T, r, sigma)
+        d1 = (math.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * math.sqrt(T))
+        d2 = d1 - sigma * math.sqrt(T)
+        term1 = (skew / 6.0) * S * sigma * math.sqrt(T) * (d2) * norm_pdf(d1)
+        term2 = (kurt / 24.0) * S * sigma * math.sqrt(T) * (d2**2 - 1) * norm_pdf(d1)
+        return max(0.0, bs_price + term1 + term2)
+    except: return 0.0
+
 def bs_vega(S, K, T, r, sigma):
     try:
         d1 = (math.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * math.sqrt(T))
@@ -155,7 +175,7 @@ def get_interval(chain):
         if diffs: return max(diffs, key=diffs.get)
     return 1
 
-def get_ltp(chain, strike, side):
+def get_opt_data(chain, strike, side):
     for row in chain:
         if row["strike_price"] == strike:
             key = "call_options" if side == "CE" else "put_options"
@@ -163,8 +183,10 @@ def get_ltp(chain, strike, side):
             ltp = mkt_data.get("ltp", 0)
             if ltp == 0:
                 ltp = mkt_data.get("close_price", 0)
-            return ltp
-    return 0
+            vol = mkt_data.get("volume", 0)
+            oi = mkt_data.get("oi", 0)
+            return ltp, vol, oi
+    return 0, 0, 0
 
 def process_index(name, key, expiry):
     chain = get_option_chain(key, expiry)
@@ -180,8 +202,8 @@ def process_index(name, key, expiry):
         ce_strike = atm - n * interval
         pe_strike = atm + n * interval
         
-        ce_ltp = get_ltp(chain, ce_strike, "CE")
-        pe_ltp = get_ltp(chain, pe_strike, "PE")
+        ce_ltp, ce_vol, ce_oi = get_opt_data(chain, ce_strike, "CE")
+        pe_ltp, pe_vol, pe_oi = get_opt_data(chain, pe_strike, "PE")
         
         if ce_ltp == 0 or pe_ltp == 0: break
             
@@ -202,6 +224,10 @@ def process_index(name, key, expiry):
         bs_ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
         bs_pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
         
+        # Calculate Skewness-Kurtosis Corrado-Su Model
+        cs_ce_fv = round(cs_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, dynamic_vol), 2)
+        cs_pe_fv = round(cs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, dynamic_vol), 2)
+        
         diff = round(ce_tv - pe_tv, 2)
         fv_diff = round(ce_fv - pe_fv, 2)
         
@@ -216,8 +242,8 @@ def process_index(name, key, expiry):
 
         rows.append({
             "pair": f"{ce_strike} / {pe_strike}",
-            "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "bs_ce_fv": bs_ce_fv,
-            "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "bs_pe_fv": bs_pe_fv,
+            "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "bs_ce_fv": bs_ce_fv, "cs_ce_fv": cs_ce_fv, "ce_vol": ce_vol, "ce_oi": ce_oi,
+            "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "bs_pe_fv": bs_pe_fv, "cs_pe_fv": cs_pe_fv, "pe_vol": pe_vol, "pe_oi": pe_oi,
             "diff": diff, "fv_diff": fv_diff, "bias": bias, "lot": lot
         })
         
@@ -257,6 +283,8 @@ threading.Thread(target=data_fetcher_loop, daemon=True).start()
 
 # --- 2. MEGA-QUOTE NIFTY 50 LOGIC ---
 mega_cache = {}
+mega_cache_oi = {}
+mega_cache_vol = {}
 nifty_meta = {}
 all_instrument_keys = []
 current_vix = 14.0  # Default VIX baseline 14%
@@ -377,19 +405,27 @@ def mega_quote_loop():
             with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
                 futures = [executor.submit(fetch_chunk, ch) for ch in chunks]
                 new_mega_cache = {}
+                new_mega_oi = {}
+                new_mega_vol = {}
                 for f in futures:
                     res = f.result()
                     if res:
                         for details in res.values():
                             instr_token = details.get("instrument_token", "")
                             ltp = details.get("last_price", 0)
+                            oi = details.get("open_interest", 0)
+                            vol = details.get("volume", 0)
                             if ltp == 0:
                                 ltp = details.get("ohlc", {}).get("close", 0)
                             if instr_token:
                                 new_mega_cache[instr_token] = ltp
+                                new_mega_oi[instr_token] = oi
+                                new_mega_vol[instr_token] = vol
                 
                 if new_mega_cache:
                     mega_cache.update(new_mega_cache)
+                    mega_cache_oi.update(new_mega_oi)
+                    mega_cache_vol.update(new_mega_vol)
                     
                     # Generate the frontend payload
                     results = []
@@ -412,6 +448,10 @@ def mega_quote_loop():
                             
                             ce_ltp = mega_cache.get(ce_key, 0)
                             pe_ltp = mega_cache.get(pe_key, 0)
+                            ce_oi = mega_cache_oi.get(ce_key, 0)
+                            pe_oi = mega_cache_oi.get(pe_key, 0)
+                            ce_vol = mega_cache_vol.get(ce_key, 0)
+                            pe_vol = mega_cache_vol.get(pe_key, 0)
                             
                             if ce_ltp == 0 or pe_ltp == 0: break
                                 
@@ -427,6 +467,9 @@ def mega_quote_loop():
                             
                             bs_ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
                             bs_pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
+                            
+                            cs_ce_fv = round(cs_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, dynamic_vol), 2)
+                            cs_pe_fv = round(cs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, dynamic_vol), 2)
 
                             diff = round(ce_tv - pe_tv, 2)
                             fv_diff = round(ce_fv - pe_fv, 2)
@@ -448,8 +491,8 @@ def mega_quote_loop():
                             
                             rows.append({
                                 "pair": f"{ce_strike} / {pe_strike}",
-                                "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "bs_ce_fv": bs_ce_fv,
-                                "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "bs_pe_fv": bs_pe_fv,
+                                "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "bs_ce_fv": bs_ce_fv, "cs_ce_fv": cs_ce_fv, "ce_vol": ce_vol, "ce_oi": ce_oi,
+                                "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "bs_pe_fv": bs_pe_fv, "cs_pe_fv": cs_pe_fv, "pe_vol": pe_vol, "pe_oi": pe_oi,
                                 "diff": diff, "fv_diff": fv_diff, "bias": bias, "lot": LOT_SIZES.get(stock, 1)
                             })
                             
