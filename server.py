@@ -195,6 +195,10 @@ def process_index(name, key, expiry):
         ce_fv = round(mjd_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.12), 2)
         pe_fv = round(mjd_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.12), 2)
         
+        # Calculate standard Black-Scholes for ML reference
+        bs_ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
+        bs_pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
+        
         diff = round(ce_tv - pe_tv, 2)
         fv_diff = round(ce_fv - pe_fv, 2)
         
@@ -209,8 +213,8 @@ def process_index(name, key, expiry):
 
         rows.append({
             "pair": f"{ce_strike} / {pe_strike}",
-            "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv,
-            "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv,
+            "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "bs_ce_fv": bs_ce_fv,
+            "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "bs_pe_fv": bs_pe_fv,
             "diff": diff, "fv_diff": fv_diff, "bias": bias, "lot": lot
         })
         
@@ -399,6 +403,9 @@ def mega_quote_loop():
                             
                             ce_fv = round(mjd_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.12), 2)
                             pe_fv = round(mjd_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.12), 2)
+                            
+                            bs_ce_fv = round(bs_call_price(spot, ce_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
+                            bs_pe_fv = round(bs_put_price(spot, pe_strike, days_to_expiry / 365.0, 0.1, 0.14), 2)
 
                             diff = round(ce_tv - pe_tv, 2)
                             fv_diff = round(ce_fv - pe_fv, 2)
@@ -420,8 +427,8 @@ def mega_quote_loop():
                             
                             rows.append({
                                 "pair": f"{ce_strike} / {pe_strike}",
-                                "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv,
-                                "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv,
+                                "ce_strike": ce_strike, "ce_ltp": round(ce_ltp, 2), "ce_fv": ce_fv, "ce_iv": round(ce_iv, 2), "ce_tv": ce_tv, "bs_ce_fv": bs_ce_fv,
+                                "pe_strike": pe_strike, "pe_ltp": round(pe_ltp, 2), "pe_fv": pe_fv, "pe_iv": round(pe_iv, 2), "pe_tv": pe_tv, "bs_pe_fv": bs_pe_fv,
                                 "diff": diff, "fv_diff": fv_diff, "bias": bias, "lot": LOT_SIZES.get(stock, 1)
                             })
                             
